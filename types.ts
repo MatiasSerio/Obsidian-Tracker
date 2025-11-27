@@ -25,21 +25,29 @@ export interface DayPlan {
   tasks: DailyTask[]; // Max 5
 }
 
+export interface JournalEntry {
+  date: string; // YYYY-MM-DD
+  content: string;
+}
+
 export interface AppState {
   habits: Habit[];
   habitLogs: HabitLog[];
   dayPlans: DayPlan[];
+  journalEntries: JournalEntry[];
 }
 
 export interface BackupData {
   habits: Habit[];
   logs: HabitLog[];
   dayPlans: DayPlan[];
+  journalEntries: JournalEntry[];
   exportDate: string;
 }
 
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   HABITS = 'HABITS',
-  TASKS = 'TASKS'
+  TASKS = 'TASKS',
+  JOURNAL = 'JOURNAL'
 }

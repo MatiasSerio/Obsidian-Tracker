@@ -1,26 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
-import { ViewState, Habit, HabitLog, DayPlan, DailyTask, BackupData } from './types';
+import { ViewState, Habit, HabitLog, DayPlan, DailyTask, BackupData, JournalEntry } from './types';
 import Dashboard from './components/Dashboard';
 import HabitManager from './components/HabitManager';
 import TaskManager from './components/TaskManager';
-import { LayoutDashboard, ListTodo, Calendar, Settings, Download } from 'lucide-react';
+import Journal from './components/Journal';
+import { LayoutDashboard, Settings, Calendar, PenTool } from 'lucide-react';
 
-// Default habits to load if local storage is empty
+// Default habits
 const DEFAULT_HABITS: Habit[] = [
   { id: '1', name: 'Morning Run', objective: '5km', minObjective: '1km', createdAt: new Date().toISOString() },
   { id: '2', name: 'Deep Work', objective: '4 Hours', minObjective: '1 Hour', createdAt: new Date().toISOString() },
   { id: '3', name: 'Reading', objective: '30 Pages', minObjective: '5 Pages', createdAt: new Date().toISOString() },
-  { id: '4', name: 'Hydration', objective: '3 Liters', minObjective: '1 Liter', createdAt: new Date().toISOString() },
 ];
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   
-  // --- State Management (In real app, move to Context) ---
+  // --- State Management ---
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [dayPlans, setDayPlans] = useState<DayPlan[]>([]);
-  const [apiKey, setApiKey] = useState<string>('');
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from LocalStorage
@@ -28,18 +29,17 @@ const App: React.FC = () => {
     const storedHabits = localStorage.getItem('obsidian_habits');
     const storedLogs = localStorage.getItem('obsidian_logs');
     const storedPlans = localStorage.getItem('obsidian_plans');
-    const storedKey = localStorage.getItem('obsidian_api_key');
+    const storedJournal = localStorage.getItem('obsidian_journal');
 
     if (storedHabits) {
       setHabits(JSON.parse(storedHabits));
     } else {
-      // Load defaults if empty
       setHabits(DEFAULT_HABITS);
     }
 
     if (storedLogs) setLogs(JSON.parse(storedLogs));
     if (storedPlans) setDayPlans(JSON.parse(storedPlans));
-    if (storedKey) setApiKey(storedKey);
+    if (storedJournal) setJournalEntries(JSON.parse(storedJournal));
     
     setIsLoaded(true);
   }, []);
@@ -50,12 +50,11 @@ const App: React.FC = () => {
       localStorage.setItem('obsidian_habits', JSON.stringify(habits));
       localStorage.setItem('obsidian_logs', JSON.stringify(logs));
       localStorage.setItem('obsidian_plans', JSON.stringify(dayPlans));
-      localStorage.setItem('obsidian_api_key', apiKey);
+      localStorage.setItem('obsidian_journal', JSON.stringify(journalEntries));
     }
-  }, [habits, logs, dayPlans, apiKey, isLoaded]);
+  }, [habits, logs, dayPlans, journalEntries, isLoaded]);
 
   // --- Handlers ---
-
   const addHabit = (habitData: Omit<Habit, 'id' | 'createdAt'>) => {
     const newHabit: Habit = {
       ...habitData,
@@ -71,43 +70,34 @@ const App: React.FC = () => {
 
   const deleteHabit = (id: string) => {
     setHabits(habits.filter(h => h.id !== id));
-    setLogs(logs.filter(l => l.habitId !== id)); // Cleanup logs
+    setLogs(logs.filter(l => l.habitId !== id)); 
   };
 
   const reorderHabits = (fromIndex: number, toIndex: number) => {
     if (toIndex < 0 || toIndex >= habits.length) return;
     const newHabits = [...habits];
-    // Remove from old position
     const [movedItem] = newHabits.splice(fromIndex, 1);
-    // Insert at new position
     newHabits.splice(toIndex, 0, movedItem);
     setHabits(newHabits);
   };
 
-  // Modified to handle specific states: 'FULL', 'PARTIAL', 'NONE'
   const toggleHabit = (habitId: string, date: string, type: 'FULL' | 'PARTIAL' | 'TOGGLE') => {
     setLogs(prevLogs => {
       const existing = prevLogs.find(l => l.habitId === habitId && l.date === date);
-      
       if (type === 'FULL') {
-        // Toggle Full: If already full, remove it. If not, set to full.
         if (existing?.completed) {
             return prevLogs.filter(l => !(l.habitId === habitId && l.date === date));
         }
-        // Remove existing entry first if it exists (e.g. partial) then add full
         const clean = prevLogs.filter(l => !(l.habitId === habitId && l.date === date));
         return [...clean, { date, habitId, completed: true, partial: false }];
       }
-      
       if (type === 'PARTIAL') {
-         // Toggle Partial: If already partial, remove it. If not, set to partial.
          if (existing?.partial) {
              return prevLogs.filter(l => !(l.habitId === habitId && l.date === date));
          }
          const clean = prevLogs.filter(l => !(l.habitId === habitId && l.date === date));
          return [...clean, { date, habitId, completed: false, partial: true }];
       }
-
       return prevLogs;
     });
   };
@@ -119,8 +109,12 @@ const App: React.FC = () => {
     });
   };
 
-  const handleSaveApiKey = (key: string) => {
-    setApiKey(key);
+  const saveJournalEntry = (date: string, content: string) => {
+    setJournalEntries(prev => {
+      const filtered = prev.filter(e => e.date !== date);
+      if (content.trim() === '') return filtered;
+      return [...filtered, { date, content }];
+    });
   };
 
   // --- Backup Handlers ---
@@ -129,6 +123,7 @@ const App: React.FC = () => {
       habits,
       logs,
       dayPlans,
+      journalEntries,
       exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -147,11 +142,10 @@ const App: React.FC = () => {
       if (data.habits) setHabits(data.habits);
       if (data.logs) setLogs(data.logs);
       if (data.dayPlans) setDayPlans(data.dayPlans);
+      if (data.journalEntries) setJournalEntries(data.journalEntries);
       alert("Data restored successfully!");
     }
   };
-
-  // --- Navigation Components ---
 
   const NavButton = ({ view, icon: Icon, label }: { view: ViewState, icon: any, label: string }) => (
     <button
@@ -183,25 +177,20 @@ const App: React.FC = () => {
             <NavButton view={ViewState.DASHBOARD} icon={LayoutDashboard} label="Dashboard" />
             <NavButton view={ViewState.HABITS} icon={Settings} label="Habits" />
             <NavButton view={ViewState.TASKS} icon={Calendar} label="Daily Plan" />
+            <NavButton view={ViewState.JOURNAL} icon={PenTool} label="Wins Journal" />
         </nav>
         
-         <button 
-            onClick={handleExportData}
-            className="text-gray-400 hover:text-accent p-2 transition-colors border border-transparent hover:border-white/10 rounded"
-            title="Download Backup"
-         >
-            <Download size={20} />
-         </button>
+        {/* Placeholder for layout balance */}
+        <div className="w-8"></div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto relative custom-scrollbar">
         <div className="min-h-full p-4 md:p-8 max-w-7xl mx-auto w-full">
           {currentView === ViewState.DASHBOARD && (
             <Dashboard 
               habits={habits} 
               logs={logs} 
-              apiKey={apiKey}
               onToggleHabit={toggleHabit} 
             />
           )}
@@ -222,8 +211,17 @@ const App: React.FC = () => {
               onSavePlan={saveDayPlan} 
             />
           )}
+          {currentView === ViewState.JOURNAL && (
+            <Journal 
+               entries={journalEntries}
+               onSaveEntry={saveJournalEntry}
+            />
+          )}
         </div>
       </main>
+
+      {/* Version Tag */}
+      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.0</div>
     </div>
   );
 };

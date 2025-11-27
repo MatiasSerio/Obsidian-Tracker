@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom Scrollbar for Obsidian Theme */
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+  margin: 4px;
+  border-radius: 9999px; /* Fully rounded edges */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a1a1a; 
+  border: 3px solid #000000; 
+  border-radius: 9999px; /* Fully rounded edges */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a2a;
+}
