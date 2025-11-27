@@ -8,7 +8,7 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import { format, subDays, subWeeks, startOfDay, differenceInCalendarDays } from 'date-fns';
-import { CheckCircle, AlertTriangle, Activity, Check, Minus, Grid, Target, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Activity, Check, Minus, Grid, Target, TrendingUp, PieChart as PieChartIcon, Brain } from 'lucide-react';
 
 interface DashboardProps {
   habits: Habit[];
@@ -49,7 +49,8 @@ const CountUp = ({ end, duration = 1000, suffix = '' }: { end: number, duration?
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) => {
-  const [heatmapSelectedHabitId, setHeatmapSelectedHabitId] = useState<string>(''); 
+  // FIX: Initialize with the first habit ID immediately to prevent 0% glitch on load
+  const [heatmapSelectedHabitId, setHeatmapSelectedHabitId] = useState<string>(() => habits.length > 0 ? habits[0].id : ''); 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [flashHabit, setFlashHabit] = useState<string | null>(null);
 
@@ -58,8 +59,9 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     return () => clearInterval(timer);
   }, []);
 
+  // Safety check: if habits change and selected ID is invalid, reset to first
   useEffect(() => {
-    if (habits.length > 0 && !heatmapSelectedHabitId) {
+    if (habits.length > 0 && !habits.find(h => h.id === heatmapSelectedHabitId)) {
         setHeatmapSelectedHabitId(habits[0].id);
     }
   }, [habits, heatmapSelectedHabitId]);
@@ -104,14 +106,25 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     if (!heatmapSelectedHabitId) return { heatmapData: [], heatmapPercentage: 0 };
     
     const selectedHabit = habits.find(h => h.id === heatmapSelectedHabitId);
-    const createdAt = selectedHabit?.createdAt ? startOfDay(new Date(selectedHabit.createdAt)) : startOfDay(new Date());
-    const WINDOW_DAYS = 90; 
+    // Parse the date strictly to avoid timezone issues
+    const createdAtStr = selectedHabit?.createdAt ? selectedHabit.createdAt.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
+    const [cy, cm, cd] = createdAtStr.split('-').map(Number);
+    const createdAt = new Date(cy, cm - 1, cd);
+
+    const WINDOW_DAYS = 120; // Expanded to 120 days
     
     const days = [];
     let weightedScoreTotal = 0;
     
-    const daysSinceCreation = differenceInCalendarDays(currentTime, createdAt) + 1; 
-    const percentageDenominator = Math.max(daysSinceCreation, 30); 
+    // Calculate days since creation for the denominator logic
+    // We use startOfDay to compare dates cleanly
+    const nowStart = startOfDay(currentTime);
+    const createdStart = startOfDay(createdAt);
+    const daysSinceCreation = differenceInCalendarDays(nowStart, createdStart) + 1; 
+    
+    // Logic: If habit is new (<30 days), use a 30-day buffer.
+    // If habit is old (>=30 days), use actual days since creation.
+    const percentageDenominator = daysSinceCreation < 30 ? 30 : daysSinceCreation;
 
     for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
       const d = startOfDay(subDays(currentTime, i));
@@ -124,7 +137,8 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
         else if (log.partial) score = 1;
       }
       
-      if (d >= createdAt) {
+      // For percentage calculation, only count days ON or AFTER creation
+      if (d >= createdStart) {
           if (log?.completed) weightedScoreTotal += 1;
           else if (log?.partial) weightedScoreTotal += 0.5;
       }
@@ -198,7 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
           <div>
             <h2 className="text-sm font-montserrat font-semibold text-gray-400 mb-1 uppercase tracking-wide">{format(currentTime, 'EEEE, MMMM do, yyyy')}</h2>
             <h1 className="text-6xl font-montserrat font-extrabold text-white tracking-tighter">{format(currentTime, 'HH:mm')}</h1>
-            <p className="text-accent mt-2 font-montserrat text-2xl italic">
+            <p className="text-accent mt-2 font-montserrat text-2xl">
               "Focus on the process, not the outcome."
             </p>
           </div>
@@ -263,9 +277,9 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
                             </div>
                         </div>
 
-                        {/* Good Job animation - ABSOLUTE POSITIONED BOTTOM RIGHT */}
-                        {notDoneYetCount === 0 && habits.length > 0 && (
-                            <div className="absolute bottom-3 right-4 animate-twinkle">
+                         {/* Good Job animation - Positioned below the countdown on the right edge */}
+                         {notDoneYetCount === 0 && habits.length > 0 && (
+                            <div className="absolute bottom-1 right-4 animate-twinkle">
                                 <span className="text-xs text-accent font-mono font-bold tracking-widest uppercase">
                                     Good Job
                                 </span>
@@ -282,7 +296,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
           
           {/* Quote 1 */}
           <div className="text-center mb-8">
-            <p className="text-accent font-montserrat text-xl italic opacity-80">Care about consistency not perfection</p>
+            <p className="text-accent font-montserrat text-xl opacity-80">Care about consistency not perfection</p>
           </div>
 
           <h3 className="text-xl font-bold flex items-center mb-6"><Activity className="mr-2 text-blue-400" /> Performance Analytics</h3>
@@ -307,7 +321,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
           {/* 2. Consistency Map (Heatmap) */}
           <div className="pt-2">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-3 md:space-y-0">
-                  <h4 className="text-sm font-bold text-gray-400 flex items-center"><Grid className="w-4 h-4 mr-2" /> CONSISTENCY (90 Days)</h4>
+                  <h4 className="text-sm font-bold text-gray-400 flex items-center"><Grid className="w-4 h-4 mr-2" /> CONSISTENCY</h4>
                   <div className="relative">
                       {/* Dropdown Menu Style Selector */}
                       <select 
@@ -326,10 +340,10 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
               </div>
               
               <div className="flex items-center">
-                  {/* Heatmap with LARGER squares (w-5 h-5) and BIGGER gap (gap-2) */}
-                  <div className="flex-1 flex flex-wrap gap-2 justify-center md:justify-start content-start">
+                  {/* Heatmap with LARGER squares (w-6 h-6) and BIGGER gap (gap-3) */}
+                  <div className="flex-1 flex flex-wrap gap-3 justify-center md:justify-start content-start">
                       {heatmapData.length > 0 ? heatmapData.map((day) => (
-                          <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-5 h-5 rounded-[3px] transition-all duration-300 hover:scale-110 ${getHeatmapColor(day.score)}`} />
+                          <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-6 h-6 rounded-[3px] transition-all duration-300 hover:scale-110 ${getHeatmapColor(day.score)}`} />
                       )) : <p className="text-xs text-gray-600">Add habits to view heatmap.</p>}
                   </div>
                   {/* Big Percentage */}
@@ -350,7 +364,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
 
           {/* Quote 2 */}
           <div className="text-center mb-8">
-            <p className="text-accent font-montserrat text-xl italic opacity-80">We always zoom in, but don't forget to zoom out. Life's more simple.</p>
+            <p className="text-accent font-montserrat text-xl opacity-80">We always zoom in, but don't forget to zoom out. Life's more simple.</p>
           </div>
 
           {/* 3. Momentum (Area Chart) */}
@@ -413,9 +427,6 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
                             <Tooltip contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#333', color: '#fff' }} />
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span className="text-xs text-gray-500 font-mono">ALL TIME</span>
-                    </div>
                 </div>
              </div>
           </div>

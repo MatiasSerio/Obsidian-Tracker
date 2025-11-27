@@ -101,7 +101,7 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
             </div>
 
             {/* The "Sheet" Body - Dark Lined Paper */}
-            <div className="flex-1 bg-[#121212] rounded-b-sm shadow-2xl relative min-h-[600px] border-l border-r border-b border-white/5">
+            <div className="flex-1 bg-[#121212] shadow-2xl relative min-h-[600px] border-l border-r border-white/5">
                 <textarea
                     ref={textareaRef}
                     value={content}
@@ -116,6 +116,9 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
                     placeholder="Today's wins..."
                 />
             </div>
+            
+             {/* The "Sheet" Footer */}
+            <div className="bg-[#1a1a1a] h-6 rounded-b-sm shadow-xl border-t border-gray-700 border-l border-r border-white/5 mb-8 opacity-80"></div>
           </>
       )}
 
@@ -123,14 +126,16 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {entries.length === 0 && <p className="text-gray-500 italic col-span-2 text-center py-20">No wins recorded yet.</p>}
               {entries.sort((a,b) => b.date.localeCompare(a.date)).map(entry => {
-                  // FIX DATE BUG: Split string manually to avoid Timezone shift when using new Date()
+                  // FIX DATE BUG: Use noon (12:00:00) to avoid timezone rollovers
                   const [y, m, d] = entry.date.split('-').map(Number);
-                  // Create date object treating it as local time 12:00 PM to be safe, or just use date-fns correctly with string parsing
-                  const dateObj = new Date(y, m - 1, d);
+                  const dateObj = new Date(y, m - 1, d, 12, 0, 0); 
                   const formattedDate = format(dateObj, 'MMMM do, yyyy');
 
+                  // Check if content is long to show blue marker
+                  const isLong = entry.content.length > 60 || entry.content.split('\n').length > 3;
+
                   return (
-                    <div key={entry.date} className="bg-charcoal p-6 rounded-lg border border-white/5 hover:border-accent/30 transition-all cursor-pointer group" onClick={() => {
+                    <div key={entry.date} className="bg-charcoal p-6 rounded-lg border border-white/5 hover:border-accent/30 transition-all cursor-pointer group relative" onClick={() => {
                         setSelectedYear(y.toString());
                         setSelectedMonth(m.toString());
                         setSelectedDay(d.toString());
@@ -140,6 +145,9 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
                         <p className="text-gray-300 font-journal text-xl line-clamp-3 opacity-80 group-hover:opacity-100 transition-opacity">
                             {entry.content}
                         </p>
+                        {isLong && (
+                            <div className="absolute bottom-4 right-4 w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(59,130,246,0.6)]" title="More content available"></div>
+                        )}
                     </div>
                   );
               })}
