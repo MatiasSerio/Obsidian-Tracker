@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { PenTool, History as HistoryIcon, Plus } from 'lucide-react';
@@ -117,8 +116,8 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
                 />
             </div>
             
-             {/* The "Sheet" Footer */}
-            <div className="bg-[#1a1a1a] h-6 rounded-b-sm shadow-xl border-t border-gray-700 border-l border-r border-white/5 mb-8 opacity-80"></div>
+             {/* The "Sheet" Footer - A black header at the bottom */}
+            <div className="bg-[#1a1a1a] h-20 rounded-b-sm shadow-xl border-t-4 border-gray-700 border-l border-r border-white/5 mb-8 relative z-10"></div>
           </>
       )}
 
@@ -146,7 +145,7 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
                             {entry.content}
                         </p>
                         {isLong && (
-                            <div className="absolute bottom-4 right-4 w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(59,130,246,0.6)]" title="More content available"></div>
+                            <div className="absolute bottom-4 right-4 w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]" title="More content available"></div>
                         )}
                     </div>
                   );

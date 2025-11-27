@@ -49,8 +49,8 @@ const CountUp = ({ end, duration = 1000, suffix = '' }: { end: number, duration?
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) => {
-  // FIX: Initialize with the first habit ID immediately to prevent 0% glitch on load
-  const [heatmapSelectedHabitId, setHeatmapSelectedHabitId] = useState<string>(() => habits.length > 0 ? habits[0].id : ''); 
+  // Initialize with empty, but logic in useMemo will handle fallback
+  const [heatmapSelectedHabitId, setHeatmapSelectedHabitId] = useState<string>(''); 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [flashHabit, setFlashHabit] = useState<string | null>(null);
 
@@ -59,9 +59,9 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     return () => clearInterval(timer);
   }, []);
 
-  // Safety check: if habits change and selected ID is invalid, reset to first
+  // Update selected ID when habits load
   useEffect(() => {
-    if (habits.length > 0 && !habits.find(h => h.id === heatmapSelectedHabitId)) {
+    if (habits.length > 0 && !heatmapSelectedHabitId) {
         setHeatmapSelectedHabitId(habits[0].id);
     }
   }, [habits, heatmapSelectedHabitId]);
@@ -103,15 +103,18 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
   }, [habits, logs, currentTime]);
 
   const { heatmapData, heatmapPercentage } = useMemo(() => {
-    if (!heatmapSelectedHabitId) return { heatmapData: [], heatmapPercentage: 0 };
+    // Fallback to first habit if selection is empty
+    const effectiveHabitId = heatmapSelectedHabitId || (habits.length > 0 ? habits[0].id : '');
     
-    const selectedHabit = habits.find(h => h.id === heatmapSelectedHabitId);
+    if (!effectiveHabitId) return { heatmapData: [], heatmapPercentage: 0 };
+    
+    const selectedHabit = habits.find(h => h.id === effectiveHabitId);
     // Parse the date strictly to avoid timezone issues
     const createdAtStr = selectedHabit?.createdAt ? selectedHabit.createdAt.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
     const [cy, cm, cd] = createdAtStr.split('-').map(Number);
     const createdAt = new Date(cy, cm - 1, cd);
 
-    const WINDOW_DAYS = 120; // Expanded to 120 days
+    const WINDOW_DAYS = 90; // Standard 90 days for consistency
     
     const days = [];
     let weightedScoreTotal = 0;
@@ -126,10 +129,11 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     // If habit is old (>=30 days), use actual days since creation.
     const percentageDenominator = daysSinceCreation < 30 ? 30 : daysSinceCreation;
 
+    // Loop from Past to Present (i decreasing means we go back less and less)
     for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
       const d = startOfDay(subDays(currentTime, i));
       const dStr = format(d, 'yyyy-MM-dd');
-      const log = logs.find(l => l.date === dStr && l.habitId === heatmapSelectedHabitId);
+      const log = logs.find(l => l.date === dStr && l.habitId === effectiveHabitId);
       
       let score = 0; 
       if (log) {
@@ -212,7 +216,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
           <div>
             <h2 className="text-sm font-montserrat font-semibold text-gray-400 mb-1 uppercase tracking-wide">{format(currentTime, 'EEEE, MMMM do, yyyy')}</h2>
             <h1 className="text-6xl font-montserrat font-extrabold text-white tracking-tighter">{format(currentTime, 'HH:mm')}</h1>
-            <p className="text-accent mt-2 font-montserrat text-2xl">
+            <p className="text-accent mt-2 font-montserrat text-3xl font-bold">
               "Focus on the process, not the outcome."
             </p>
           </div>
@@ -277,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
                             </div>
                         </div>
 
-                         {/* Good Job animation - Positioned below the countdown on the right edge */}
+                         {/* Good Job animation - Positioned absolutely at bottom right of the box */}
                          {notDoneYetCount === 0 && habits.length > 0 && (
                             <div className="absolute bottom-1 right-4 animate-twinkle">
                                 <span className="text-xs text-accent font-mono font-bold tracking-widest uppercase">
@@ -296,7 +300,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
           
           {/* Quote 1 */}
           <div className="text-center mb-8">
-            <p className="text-accent font-montserrat text-xl opacity-80">Care about consistency not perfection</p>
+            <p className="text-accent font-montserrat text-xl opacity-80">Care about consistency not perfection.</p>
           </div>
 
           <h3 className="text-xl font-bold flex items-center mb-6"><Activity className="mr-2 text-blue-400" /> Performance Analytics</h3>
@@ -340,10 +344,10 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
               </div>
               
               <div className="flex items-center">
-                  {/* Heatmap with LARGER squares (w-6 h-6) and BIGGER gap (gap-3) */}
-                  <div className="flex-1 flex flex-wrap gap-3 justify-center md:justify-start content-start">
+                  {/* Heatmap with LARGER squares (w-7 h-7) and BIGGER gap (gap-2) */}
+                  <div className="flex-1 flex flex-wrap gap-2 justify-center md:justify-start content-start">
                       {heatmapData.length > 0 ? heatmapData.map((day) => (
-                          <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-6 h-6 rounded-[3px] transition-all duration-300 hover:scale-110 ${getHeatmapColor(day.score)}`} />
+                          <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-7 h-7 rounded-[3px] transition-all duration-300 hover:scale-110 ${getHeatmapColor(day.score)}`} />
                       )) : <p className="text-xs text-gray-600">Add habits to view heatmap.</p>}
                   </div>
                   {/* Big Percentage */}
