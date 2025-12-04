@@ -6,13 +6,39 @@ import HabitManager from './components/HabitManager';
 import TaskManager from './components/TaskManager';
 import Journal from './components/Journal';
 import { LayoutDashboard, Settings, Calendar, PenTool } from 'lucide-react';
+import { subDays, format } from 'date-fns';
 
-// Default habits
+// Default habits - Created 7 days ago so past logs count in calculation
 const DEFAULT_HABITS: Habit[] = [
-  { id: '1', name: 'Morning Run', objective: '5km', minObjective: '1km', createdAt: new Date().toISOString() },
-  { id: '2', name: 'Deep Work', objective: '4 Hours', minObjective: '1 Hour', createdAt: new Date().toISOString() },
-  { id: '3', name: 'Reading', objective: '30 Pages', minObjective: '5 Pages', createdAt: new Date().toISOString() },
+  { id: '1', name: 'Morning Run', objective: '5km', minObjective: '1km', createdAt: subDays(new Date(), 7).toISOString() },
+  { id: '2', name: 'Deep Work', objective: '4 Hours', minObjective: '1 Hour', createdAt: subDays(new Date(), 7).toISOString() },
+  { id: '3', name: 'Reading', objective: '30 Pages', minObjective: '5 Pages', createdAt: subDays(new Date(), 7).toISOString() },
 ];
+
+// Preview Data Generator
+const generatePreviewLogs = (): HabitLog[] => {
+  const logs: HabitLog[] = [];
+  const today = new Date();
+  
+  // Morning Run: 5 days fully done (Today + 4 past days)
+  for (let i = 0; i < 5; i++) {
+    logs.push({
+      date: format(subDays(today, i), 'yyyy-MM-dd'),
+      habitId: '1',
+      completed: true,
+      partial: false
+    });
+  }
+
+  // Deep Work: 1 day done enough (today), 2 days fully done (yesterday, day before)
+  logs.push({ date: format(today, 'yyyy-MM-dd'), habitId: '2', completed: false, partial: true });
+  logs.push({ date: format(subDays(today, 1), 'yyyy-MM-dd'), habitId: '2', completed: true, partial: false });
+  logs.push({ date: format(subDays(today, 2), 'yyyy-MM-dd'), habitId: '2', completed: true, partial: false });
+
+  return logs;
+};
+
+const DEFAULT_LOGS = generatePreviewLogs();
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
@@ -37,7 +63,12 @@ const App: React.FC = () => {
       setHabits(DEFAULT_HABITS);
     }
 
-    if (storedLogs) setLogs(JSON.parse(storedLogs));
+    if (storedLogs) {
+        setLogs(JSON.parse(storedLogs));
+    } else {
+        setLogs(DEFAULT_LOGS);
+    }
+    
     if (storedPlans) setDayPlans(JSON.parse(storedPlans));
     if (storedJournal) setJournalEntries(JSON.parse(storedJournal));
     
@@ -221,7 +252,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Version Tag */}
-      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.1</div>
+      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.2</div>
     </div>
   );
 };

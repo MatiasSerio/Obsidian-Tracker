@@ -131,8 +131,8 @@ const Journal: React.FC<JournalProps> = ({ entries, onSaveEntry }) => {
                   const dateObj = new Date(y, m - 1, d, 12, 0, 0); 
                   const formattedDate = format(dateObj, 'MMMM do, yyyy');
 
-                  // Increased threshold to ~150 chars or > 6 lines to prevent false positives for "unreadable" content
-                  const isLong = entry.content.length > 150 || entry.content.split('\n').length > 6;
+                  // Increased threshold to ~200 chars or > 6 lines to prevent false positives for "unreadable" content
+                  const isLong = entry.content.length > 200 || entry.content.split('\n').length > 6;
 
                   return (
                     <div key={entry.date} className="bg-charcoal p-6 rounded-lg border border-white/5 hover:border-accent/30 transition-all cursor-pointer group relative" onClick={() => {

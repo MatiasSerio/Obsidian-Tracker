@@ -7,7 +7,7 @@ import {
   AreaChart, Area, Line,
   PieChart, Pie, Cell
 } from 'recharts';
-import { format, subDays, subWeeks, startOfDay, differenceInCalendarDays } from 'date-fns';
+import { format, subDays, subWeeks, startOfDay, differenceInCalendarDays, isSameDay } from 'date-fns';
 import { CheckCircle, AlertTriangle, Activity, Check, Minus, Grid, Target, TrendingUp, PieChart as PieChartIcon, Brain } from 'lucide-react';
 
 interface DashboardProps {
@@ -90,7 +90,11 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
       prevWeekCount = prevLogs.filter(l => l.completed || l.partial).length;
 
       const totalHabits = habits.length || 1;
-      const score = Math.round(((fullCount * 1) + (partialCount * 0.5)) / totalHabits * 100);
+      
+      // Fixed Consistency Calc: Partial and Full are now evaluated the same (1 point each)
+      // Note: We use 1 point for both as requested, treating them equally in score.
+      const weightedScore = (fullCount * 1) + (partialCount * 1);
+      const score = Math.round((weightedScore / totalHabits) * 100);
 
       data.push({
         date: format(d, 'MMM dd'),
@@ -116,39 +120,40 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     const [cy, cm, cd] = createdAtStr.split('-').map(Number);
     const createdAt = new Date(cy, cm - 1, cd);
 
-    const WINDOW_DAYS = 90; // Standard 90 days for consistency
+    const WINDOW_DAYS = 90; // Standard 90 days
     
     const days = [];
     let weightedScoreTotal = 0;
     
-    // Calculate days since creation for the denominator logic
-    // We use startOfDay to compare dates cleanly
     const createdStart = startOfDay(createdAt);
     const daysSinceCreation = differenceInCalendarDays(stableToday, createdStart) + 1; 
     
-    // Logic: If habit is new (<30 days), use a 30-day buffer.
-    // If habit is old (>=30 days), use actual days since creation.
     const percentageDenominator = daysSinceCreation < 30 ? 30 : daysSinceCreation;
 
-    // Loop from Past to Present (i decreasing means we go back less and less)
+    // Strict Loop: Ensure exactly WINDOW_DAYS items.
     for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
       const d = subDays(stableToday, i);
       const dStr = format(d, 'yyyy-MM-dd');
-      const log = logs.find(l => l.date === dStr && l.habitId === effectiveHabitId);
       
-      let score = 0; 
+      const log = logs.find(l => l.habitId === effectiveHabitId && l.date === dStr);
+      
+      let visualScore = 0; // For Heatmap Color
       if (log) {
-        if (log.completed) score = 3;
-        else if (log.partial) score = 1;
+        if (log.completed) visualScore = 3; // Green
+        else if (log.partial) visualScore = 1; // Yellow
       }
       
-      // For percentage calculation, only count days ON or AFTER creation
+      // Percentage Calculation Logic (Equal Weight for Partial and Full)
       if (d >= createdStart) {
-          // Changed: Both Full (3) and Partial (1) now count as "Consistent" (1 point)
-          if (log?.completed || log?.partial) weightedScoreTotal += 1;
+          if (log?.completed) weightedScoreTotal += 1; // Was 3
+          else if (log?.partial) weightedScoreTotal += 1; // Was 1. Now Equal.
       }
       
-      days.push({ date: dStr, score, displayDate: format(d, 'MMM do') });
+      days.push({ 
+          date: dStr, 
+          score: visualScore, 
+          displayDate: format(d, 'MMM do') 
+      });
     }
     
     const percentage = Math.round((weightedScoreTotal / percentageDenominator) * 100);
@@ -162,8 +167,9 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
             const d = subDays(stableToday, i);
             const dStr = format(d, 'yyyy-MM-dd');
             const log = logs.find(l => l.habitId === h.id && l.date === dStr);
+            // Consistency Calc: Treat Full and Partial equally (100 points)
             if(log?.completed) score += 100;
-            else if(log?.partial) score += 50;
+            else if(log?.partial) score += 100; 
         }
         return { subject: h.name, A: Math.round((score / 3000) * 100), fullMark: 100 }
     })
@@ -196,8 +202,8 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
 
   const getHeatmapColor = (score: number) => {
     if (score === 3) return 'bg-accent shadow-[0_0_8px_rgba(16,185,129,0.6)]'; 
-    if (score === 2) return 'bg-accent/60'; 
-    if (score === 1) return 'bg-yellow-500/50'; 
+    if (score === 2) return 'bg-accent/60'; // Legacy fallback
+    if (score === 1) return 'bg-yellow-500/50'; // Yellow for partial
     return 'bg-white/5'; 
   };
 
@@ -346,9 +352,9 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
               
               <div className="flex items-center">
                   {/* Heatmap with LARGER squares (w-7 h-7) and BIGGER gap (gap-2) */}
-                  <div className="flex-1 flex flex-wrap gap-2 justify-center md:justify-start content-start">
+                  <div className="flex-1 flex flex-wrap gap-2 justify-center md:justify-start content-start max-w-[800px]">
                       {heatmapData.length > 0 ? heatmapData.map((day) => (
-                          <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-7 h-7 rounded-[3px] transition-all duration-300 hover:scale-110 ${getHeatmapColor(day.score)}`} />
+                          <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-7 h-7 rounded-[3px] transition-all duration-300 hover:scale-110 flex-shrink-0 ${getHeatmapColor(day.score)}`} />
                       )) : <p className="text-xs text-gray-600">Add habits to view heatmap.</p>}
                   </div>
                   {/* Big Percentage */}

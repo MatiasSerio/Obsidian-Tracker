@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { DayPlan, DailyTask } from '../types';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay, startOfWeek, endOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, CheckSquare, Square, Calendar as CalendarIcon, AlignLeft, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TaskManagerProps {
@@ -18,13 +18,15 @@ const TaskManager: React.FC<TaskManagerProps> = ({ dayPlans, onSavePlan }) => {
   const [tempTasks, setTempTasks] = useState<DailyTask[]>([]);
   const [expandedTaskIndex, setExpandedTaskIndex] = useState<number | null>(null);
 
-  // Calendar Logic
+  // Calendar Logic - Robust Generation
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   
-  // Get the day of the week for the 1st of the month (0 = Sunday, 1 = Monday, etc.)
-  const startDayIndex = getDay(monthStart);
+  // Explicitly start on Sunday (weekStartsOn: 0) to align with headers ['Sun', 'Mon'...]
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);
@@ -87,33 +89,30 @@ const TaskManager: React.FC<TaskManagerProps> = ({ dayPlans, onSavePlan }) => {
             <div key={d} className="text-center text-gray-500 font-mono text-sm uppercase">{d}</div>
           ))}
           
-          {/* Empty cells for days before the 1st */}
-          {Array.from({ length: startDayIndex }).map((_, i) => (
-             <div key={`empty-${i}`} className="min-h-[100px]"></div>
-          ))}
-
           {days.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const plan = dayPlans.find(p => p.date === dateStr);
             const taskCount = plan ? plan.tasks.filter(t => t.text.trim() !== '').length : 0;
             const completedCount = plan ? plan.tasks.filter(t => t.completed && t.text.trim() !== '').length : 0;
             const isSelected = selectedDate && isSameDay(day, selectedDate);
+            const isCurrentMonth = isSameMonth(day, currentDate);
 
             return (
               <button
                 key={day.toString()}
                 onClick={() => handleDayClick(day)}
                 className={`
-                  relative border rounded-lg p-3 min-h-[100px] flex flex-col items-start justify-between hover:border-accent transition-colors
+                  relative border rounded-lg p-3 min-h-[100px] flex flex-col items-start justify-between transition-colors
                   ${isToday(day) ? 'bg-white/5 border-accent' : 'border-white/10 bg-charcoal'}
+                  ${!isCurrentMonth ? 'opacity-30 grayscale' : 'hover:border-accent'}
                   ${isSelected ? 'ring-2 ring-blue-500' : ''}
                 `}
               >
-                <span className={`text-lg font-bold ${isToday(day) ? 'text-accent' : 'text-gray-300'}`}>
+                <span className={`text-lg font-bold ${isToday(day) ? 'text-accent' : isCurrentMonth ? 'text-gray-300' : 'text-gray-600'}`}>
                   {format(day, 'd')}
                 </span>
                 
-                {taskCount > 0 && (
+                {taskCount > 0 && isCurrentMonth && (
                   <div className="w-full mt-2">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Tasks</span>

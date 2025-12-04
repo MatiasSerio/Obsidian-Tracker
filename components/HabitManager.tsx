@@ -74,10 +74,10 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onUpdate, on
   return (
     <div className="max-w-4xl mx-auto flex flex-col pb-20 space-y-12 relative">
       
-      {/* Modal Overlay for Editing/Adding */}
+      {/* Modal Overlay for Editing/Adding - Centered and Fixed */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleCancel}>
-            <div className="bg-charcoal p-8 rounded-xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={handleCancel}>
+            <div className="bg-charcoal p-8 rounded-xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up relative" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-2xl font-bold text-white">{editingId ? 'Edit Habit' : 'New Habit'}</h3>
                     <button onClick={handleCancel} className="text-gray-500 hover:text-white"><X size={24} /></button>
