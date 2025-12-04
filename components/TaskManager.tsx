@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { DayPlan, DailyTask } from '../types';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, CheckSquare, Square, Calendar as CalendarIcon, AlignLeft, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TaskManagerProps {
@@ -21,6 +22,9 @@ const TaskManager: React.FC<TaskManagerProps> = ({ dayPlans, onSavePlan }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Get the day of the week for the 1st of the month (0 = Sunday, 1 = Monday, etc.)
+  const startDayIndex = getDay(monthStart);
 
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);
@@ -82,6 +86,12 @@ const TaskManager: React.FC<TaskManagerProps> = ({ dayPlans, onSavePlan }) => {
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <div key={d} className="text-center text-gray-500 font-mono text-sm uppercase">{d}</div>
           ))}
+          
+          {/* Empty cells for days before the 1st */}
+          {Array.from({ length: startDayIndex }).map((_, i) => (
+             <div key={`empty-${i}`} className="min-h-[100px]"></div>
+          ))}
+
           {days.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const plan = dayPlans.find(p => p.date === dateStr);

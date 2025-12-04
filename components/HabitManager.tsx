@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Habit, BackupData } from '../types';
 import { Plus, Trash2, Edit2, Save, X, Download, Upload, Database, ArrowUp, ArrowDown } from 'lucide-react';
@@ -71,8 +72,60 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onUpdate, on
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col pb-20 space-y-12">
+    <div className="max-w-4xl mx-auto flex flex-col pb-20 space-y-12 relative">
       
+      {/* Modal Overlay for Editing/Adding */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleCancel}>
+            <div className="bg-charcoal p-8 rounded-xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold text-white">{editingId ? 'Edit Habit' : 'New Habit'}</h3>
+                    <button onClick={handleCancel} className="text-gray-500 hover:text-white"><X size={24} /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="space-y-4 mb-6">
+                        <div>
+                            <label className="block text-xs font-mono text-gray-400 mb-1">Habit Name</label>
+                            <input 
+                                type="text" 
+                                value={formData.name}
+                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                className="w-full bg-obsidian border border-gray-700 rounded p-3 text-white focus:border-accent focus:outline-none"
+                                placeholder="e.g. Morning Run"
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-mono text-gray-400 mb-1">Main Objective</label>
+                            <input 
+                                type="text" 
+                                value={formData.objective}
+                                onChange={(e) => setFormData({...formData, objective: e.target.value})}
+                                className="w-full bg-obsidian border border-gray-700 rounded p-3 text-white focus:border-accent focus:outline-none"
+                                placeholder="e.g. 5 Kilometers"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-mono text-gray-400 mb-1">Min. Objective</label>
+                            <input 
+                                type="text" 
+                                value={formData.minObjective}
+                                onChange={(e) => setFormData({...formData, minObjective: e.target.value})}
+                                className="w-full bg-obsidian border border-gray-700 rounded p-3 text-white focus:border-accent focus:outline-none"
+                                placeholder="e.g. 1 Kilometer"
+                            />
+                        </div>
+                    </div>
+                    <button type="submit" className="w-full bg-accent hover:bg-emerald-400 text-obsidian p-3 rounded font-bold flex items-center justify-center transition-colors">
+                        <Save size={18} className="mr-2"/> {editingId ? 'Update Configuration' : 'Save Configuration'}
+                    </button>
+                </form>
+            </div>
+        </div>
+      )}
+
       {/* Configuration Section */}
       <div>
         <div className="flex justify-between items-center mb-8">
@@ -81,58 +134,13 @@ const HabitManager: React.FC<HabitManagerProps> = ({ habits, onAdd, onUpdate, on
             <p className="text-gray-400 mt-1">Define and prioritize the pillars of your routine.</p>
             </div>
             <button 
-            onClick={isEditing ? handleCancel : startAdding}
+            onClick={startAdding}
             className="bg-accent text-obsidian px-4 py-2 rounded font-bold flex items-center hover:bg-emerald-400 transition-colors"
             >
-            {isEditing ? <X size={18} className="mr-2"/> : <Plus size={18} className="mr-2"/>}
-            {isEditing ? 'Cancel' : 'Add Habit'}
+             <Plus size={18} className="mr-2"/>
+             Add Habit
             </button>
         </div>
-
-        {isEditing && (
-            <form onSubmit={handleSubmit} className="bg-charcoal p-6 rounded-xl border border-white/5 mb-8 animate-fade-in-down">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-white">{editingId ? 'Edit Habit' : 'New Habit'}</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                <label className="block text-xs font-mono text-gray-400 mb-1">Habit Name</label>
-                <input 
-                    type="text" 
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full bg-obsidian border border-gray-700 rounded p-2 text-white focus:border-accent focus:outline-none"
-                    placeholder="e.g. Morning Run"
-                    required
-                />
-                </div>
-                <div>
-                <label className="block text-xs font-mono text-gray-400 mb-1">Main Objective</label>
-                <input 
-                    type="text" 
-                    value={formData.objective}
-                    onChange={(e) => setFormData({...formData, objective: e.target.value})}
-                    className="w-full bg-obsidian border border-gray-700 rounded p-2 text-white focus:border-accent focus:outline-none"
-                    placeholder="e.g. 5 Kilometers"
-                    required
-                />
-                </div>
-                <div>
-                <label className="block text-xs font-mono text-gray-400 mb-1">Min. Objective</label>
-                <input 
-                    type="text" 
-                    value={formData.minObjective}
-                    onChange={(e) => setFormData({...formData, minObjective: e.target.value})}
-                    className="w-full bg-obsidian border border-gray-700 rounded p-2 text-white focus:border-accent focus:outline-none"
-                    placeholder="e.g. 1 Kilometer"
-                />
-                </div>
-            </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold flex items-center justify-center">
-                <Save size={18} className="mr-2"/> {editingId ? 'Update Configuration' : 'Save Configuration'}
-            </button>
-            </form>
-        )}
 
         <div className="grid grid-cols-1 gap-4">
             {habits.map((habit, index) => (

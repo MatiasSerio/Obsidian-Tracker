@@ -59,6 +59,10 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     return () => clearInterval(timer);
   }, []);
 
+  // Use a stable 'today' reference for charts to avoid jitter from second-updates
+  const stableToday = useMemo(() => startOfDay(currentTime), [currentTime.getDate()]); 
+  const todayStr = format(stableToday, 'yyyy-MM-dd');
+
   // Update selected ID when habits load
   useEffect(() => {
     if (habits.length > 0 && !heatmapSelectedHabitId) {
@@ -66,13 +70,11 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     }
   }, [habits, heatmapSelectedHabitId]);
 
-  const todayStr = format(currentTime, 'yyyy-MM-dd');
-
   // --- Statistics Logic ---
   const chartData = useMemo(() => {
     const data = [];
     for (let i = 29; i >= 0; i--) {
-      const d = subDays(currentTime, i);
+      const d = subDays(stableToday, i);
       const prevWeekD = subWeeks(d, 1);
       const dStr = format(d, 'yyyy-MM-dd');
       const prevWeekDStr = format(prevWeekD, 'yyyy-MM-dd');
@@ -100,7 +102,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
       });
     }
     return data;
-  }, [habits, logs, currentTime]);
+  }, [habits, logs, stableToday]);
 
   const { heatmapData, heatmapPercentage } = useMemo(() => {
     // Fallback to first habit if selection is empty
@@ -121,9 +123,8 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     
     // Calculate days since creation for the denominator logic
     // We use startOfDay to compare dates cleanly
-    const nowStart = startOfDay(currentTime);
     const createdStart = startOfDay(createdAt);
-    const daysSinceCreation = differenceInCalendarDays(nowStart, createdStart) + 1; 
+    const daysSinceCreation = differenceInCalendarDays(stableToday, createdStart) + 1; 
     
     // Logic: If habit is new (<30 days), use a 30-day buffer.
     // If habit is old (>=30 days), use actual days since creation.
@@ -131,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
 
     // Loop from Past to Present (i decreasing means we go back less and less)
     for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
-      const d = startOfDay(subDays(currentTime, i));
+      const d = subDays(stableToday, i);
       const dStr = format(d, 'yyyy-MM-dd');
       const log = logs.find(l => l.date === dStr && l.habitId === effectiveHabitId);
       
@@ -143,8 +144,8 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
       
       // For percentage calculation, only count days ON or AFTER creation
       if (d >= createdStart) {
-          if (log?.completed) weightedScoreTotal += 1;
-          else if (log?.partial) weightedScoreTotal += 0.5;
+          // Changed: Both Full (3) and Partial (1) now count as "Consistent" (1 point)
+          if (log?.completed || log?.partial) weightedScoreTotal += 1;
       }
       
       days.push({ date: dStr, score, displayDate: format(d, 'MMM do') });
@@ -152,13 +153,13 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     
     const percentage = Math.round((weightedScoreTotal / percentageDenominator) * 100);
     return { heatmapData: days, heatmapPercentage: Math.min(percentage, 100) };
-  }, [logs, heatmapSelectedHabitId, currentTime, habits]);
+  }, [logs, heatmapSelectedHabitId, stableToday, habits]);
 
   const radarData = useMemo(() => {
     return habits.map(h => {
         let score = 0;
         for(let i=0; i<30; i++) {
-            const d = subDays(currentTime, i);
+            const d = subDays(stableToday, i);
             const dStr = format(d, 'yyyy-MM-dd');
             const log = logs.find(l => l.habitId === h.id && l.date === dStr);
             if(log?.completed) score += 100;
@@ -166,12 +167,12 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
         }
         return { subject: h.name, A: Math.round((score / 3000) * 100), fullMark: 100 }
     })
-  }, [habits, logs, currentTime]);
+  }, [habits, logs, stableToday]);
 
   const donutData = useMemo(() => {
     let full = 0, partial = 0, missed = 0;
     for (let i = 0; i < 30; i++) {
-         const d = subDays(currentTime, i);
+         const d = subDays(stableToday, i);
          const dStr = format(d, 'yyyy-MM-dd');
          habits.forEach(habit => {
             const createdDate = habit.createdAt ? habit.createdAt.split('T')[0] : '2023-01-01';
@@ -188,7 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
         { name: 'Done Enough', value: partial, color: '#F59E0B' },
         { name: 'Missed', value: missed, color: '#374151' },
     ].filter(item => item.value > 0);
-  }, [habits, logs, currentTime]);
+  }, [habits, logs, stableToday]);
 
   const todayLogs = logs.filter(l => l.date === todayStr);
   const notDoneYetCount = habits.filter(h => !todayLogs.find(l => l.habitId === h.id)).length;
