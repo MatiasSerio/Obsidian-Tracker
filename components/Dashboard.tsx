@@ -350,15 +350,15 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
                   </div>
               </div>
               
-              <div className="flex flex-row justify-between items-center">
+              <div className="flex items-center">
                   {/* Heatmap with LARGER squares (w-7 h-7) and BIGGER gap (gap-2) */}
-                  <div className="flex flex-wrap gap-2 justify-start content-start">
+                  <div className="flex-1 flex flex-wrap gap-2 justify-center md:justify-start content-start max-w-[800px]">
                       {heatmapData.length > 0 ? heatmapData.map((day) => (
                           <div key={day.date} title={`${day.displayDate}: ${day.score === 3 ? 'Fully Done' : day.score === 1 ? 'Done Enough' : 'Missed'}`} className={`w-7 h-7 rounded-[3px] transition-all duration-300 hover:scale-110 flex-shrink-0 ${getHeatmapColor(day.score)}`} />
                       )) : <p className="text-xs text-gray-600">Add habits to view heatmap.</p>}
                   </div>
                   {/* Big Percentage */}
-                  <div className="ml-8 hidden md:block text-right flex-shrink-0">
+                  <div className="ml-8 hidden md:block text-right">
                       <div className="text-7xl font-bold text-white tracking-tighter"><CountUp end={heatmapPercentage} suffix="%" /></div>
                       <div className="text-xs text-gray-500 uppercase tracking-widest mt-1">CONSISTENCY</div>
                   </div>
@@ -375,7 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
 
           {/* Quote 2 */}
           <div className="text-center mb-8">
-            <p className="text-accent font-montserrat text-xl opacity-80">Motivation doesn't lead to repetition. Repetition leads to motivation.</p>
+            <p className="text-accent font-montserrat text-xl opacity-80">We always zoom in, but don't forget to zoom out. Life's more simple.</p>
           </div>
 
           {/* 3. Momentum (Area Chart) */}
