@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { ViewState, Habit, HabitLog, DayPlan, DailyTask, BackupData, JournalEntry } from './types';
 import Dashboard from './components/Dashboard';
@@ -252,7 +253,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Version Tag */}
-      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.2</div>
+      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.4</div>
     </div>
   );
 };

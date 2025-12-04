@@ -375,7 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
 
           {/* Quote 2 */}
           <div className="text-center mb-8">
-            <p className="text-accent font-montserrat text-xl opacity-80">We always zoom in, but don't forget to zoom out. Life's more simple.</p>
+            <p className="text-accent font-montserrat text-xl opacity-80">Motivation doesn't lead to repetition. Repetition leads to motivation.</p>
           </div>
 
           {/* 3. Momentum (Area Chart) */}
