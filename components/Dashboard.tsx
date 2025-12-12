@@ -119,19 +119,14 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
     const createdAtStr = selectedHabit?.createdAt ? selectedHabit.createdAt.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
     const [cy, cm, cd] = createdAtStr.split('-').map(Number);
     const createdAt = new Date(cy, cm - 1, cd);
-
-    const WINDOW_DAYS = 90; // Standard 90 days
-    
-    const days = [];
-    let weightedScoreTotal = 0;
-    
     const createdStart = startOfDay(createdAt);
-    const daysSinceCreation = differenceInCalendarDays(stableToday, createdStart) + 1; 
-    
-    const percentageDenominator = daysSinceCreation < 30 ? 30 : daysSinceCreation;
 
-    // Strict Loop: Ensure exactly WINDOW_DAYS items.
-    for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
+    // --- 1. Visual Heatmap Generation (90 Days) ---
+    // This strictly controls the grid of squares shown on UI
+    const VISUAL_WINDOW_DAYS = 90;
+    const days = [];
+    
+    for (let i = VISUAL_WINDOW_DAYS - 1; i >= 0; i--) {
       const d = subDays(stableToday, i);
       const dStr = format(d, 'yyyy-MM-dd');
       
@@ -143,12 +138,6 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
         else if (log.partial) visualScore = 1; // Yellow
       }
       
-      // Percentage Calculation Logic (Equal Weight for Partial and Full)
-      if (d >= createdStart) {
-          if (log?.completed) weightedScoreTotal += 1; // Was 3
-          else if (log?.partial) weightedScoreTotal += 1; // Was 1. Now Equal.
-      }
-      
       days.push({ 
           date: dStr, 
           score: visualScore, 
@@ -156,7 +145,25 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
       });
     }
     
-    const percentage = Math.round((weightedScoreTotal / percentageDenominator) * 100);
+    // --- 2. Consistency Percentage Calculation (Last 30 Days) ---
+    // Counts points only from the last 30 days.
+    // Denominator is fixed at 30.
+    const CONSISTENCY_WINDOW = 30;
+    let consistencyScoreTotal = 0;
+
+    for (let i = 0; i < CONSISTENCY_WINDOW; i++) {
+        const d = subDays(stableToday, i);
+        // Only count points if the day is valid (habit existed)
+        if (d >= createdStart) {
+            const dStr = format(d, 'yyyy-MM-dd');
+            const log = logs.find(l => l.habitId === effectiveHabitId && l.date === dStr);
+            
+            if (log?.completed) consistencyScoreTotal += 1;
+            else if (log?.partial) consistencyScoreTotal += 1;
+        }
+    }
+    
+    const percentage = Math.round((consistencyScoreTotal / CONSISTENCY_WINDOW) * 100);
     return { heatmapData: days, heatmapPercentage: Math.min(percentage, 100) };
   }, [logs, heatmapSelectedHabitId, stableToday, habits]);
 
