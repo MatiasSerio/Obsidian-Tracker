@@ -1,10 +1,11 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Habit, HabitLog } from "../types";
 
-export const analyzeProgress = async (apiKey: string, habits: Habit[], logs: HabitLog[]) => {
-  if (!apiKey) return "AI Configuration Missing. Please add your Google Gemini API Key in the Habits tab settings.";
-
-  const ai = new GoogleGenAI({ apiKey });
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+export const analyzeProgress = async (habits: Habit[], logs: HabitLog[]) => {
+  // Use process.env.API_KEY directly when initializing the @google/genai client instance.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const today = new Date().toISOString().split('T')[0];
   
   // Prepare data for the model
@@ -16,7 +17,8 @@ export const analyzeProgress = async (apiKey: string, habits: Habit[], logs: Hab
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      // Use 'gemini-3-flash-preview' for basic text tasks like summarization.
+      model: 'gemini-3-flash-preview',
       contents: `
         You are a productivity coach. Analyze this JSON data representing a user's habit tracking.
         Current Date: ${today}
@@ -27,9 +29,10 @@ export const analyzeProgress = async (apiKey: string, habits: Habit[], logs: Hab
         Talk directly to the user ("You have...").
       `,
     });
+    // The response.text property (not a method) returns the generated text content.
     return response.text;
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    return "Error connecting to AI. Please check your API Key.";
+    return "Error connecting to AI. Please try again later.";
   }
 };

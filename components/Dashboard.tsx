@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Habit, HabitLog } from '../types';
 import { 
@@ -87,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, logs, onToggleHabit }) =>
       partialCount = dayLogs.filter(l => l.partial).length;
 
       const prevLogs = logs.filter(l => l.date === prevWeekDStr);
-      prevWeekCount = prevLogs.filter(l => l.completed || l.partial).length;
+      prevWeekCount = prevLogs.filter(l => l.date === prevWeekDStr && (l.completed || l.partial)).length;
 
       const totalHabits = habits.length || 1;
       

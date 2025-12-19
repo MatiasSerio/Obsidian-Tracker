@@ -1,12 +1,10 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { ViewState, Habit, HabitLog, DayPlan, DailyTask, BackupData, JournalEntry } from './types';
+import { ViewState, Habit, HabitLog, DayPlan, DailyTask, BackupData, JournalEntry, MicroWin, MicroWinLog } from './types';
 import Dashboard from './components/Dashboard';
 import HabitManager from './components/HabitManager';
 import TaskManager from './components/TaskManager';
 import Journal from './components/Journal';
-import { LayoutDashboard, Settings, Calendar, PenTool } from 'lucide-react';
+import { LayoutDashboard, Settings, Calendar, Trophy } from 'lucide-react';
 import { subDays, format } from 'date-fns';
 
 // Default habits - Created 7 days ago so past logs count in calculation
@@ -14,6 +12,12 @@ const DEFAULT_HABITS: Habit[] = [
   { id: '1', name: 'Morning Run', objective: '5km', minObjective: '1km', createdAt: subDays(new Date(), 7).toISOString() },
   { id: '2', name: 'Deep Work', objective: '4 Hours', minObjective: '1 Hour', createdAt: subDays(new Date(), 7).toISOString() },
   { id: '3', name: 'Reading', objective: '30 Pages', minObjective: '5 Pages', createdAt: subDays(new Date(), 7).toISOString() },
+];
+
+const DEFAULT_MICRO_WINS: MicroWin[] = [
+  { id: 'm1', text: 'Woke up at 9am' },
+  { id: 'm2', text: 'Made my bed at 9:30' },
+  { id: 'm3', text: 'Opened Spreadsheet' },
 ];
 
 // Preview Data Generator
@@ -47,6 +51,8 @@ const App: React.FC = () => {
   // --- State Management ---
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
+  const [microWins, setMicroWins] = useState<MicroWin[]>([]);
+  const [microWinLogs, setMicroWinLogs] = useState<MicroWinLog[]>([]);
   const [dayPlans, setDayPlans] = useState<DayPlan[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -55,20 +61,21 @@ const App: React.FC = () => {
   useEffect(() => {
     const storedHabits = localStorage.getItem('obsidian_habits');
     const storedLogs = localStorage.getItem('obsidian_logs');
+    const storedMicroWins = localStorage.getItem('obsidian_microwins');
+    const storedMicroWinLogs = localStorage.getItem('obsidian_microwin_logs');
     const storedPlans = localStorage.getItem('obsidian_plans');
     const storedJournal = localStorage.getItem('obsidian_journal');
 
-    if (storedHabits) {
-      setHabits(JSON.parse(storedHabits));
-    } else {
-      setHabits(DEFAULT_HABITS);
-    }
+    if (storedHabits) setHabits(JSON.parse(storedHabits));
+    else setHabits(DEFAULT_HABITS);
 
-    if (storedLogs) {
-        setLogs(JSON.parse(storedLogs));
-    } else {
-        setLogs(DEFAULT_LOGS);
-    }
+    if (storedLogs) setLogs(JSON.parse(storedLogs));
+    else setLogs(DEFAULT_LOGS);
+
+    if (storedMicroWins) setMicroWins(JSON.parse(storedMicroWins));
+    else setMicroWins(DEFAULT_MICRO_WINS);
+
+    if (storedMicroWinLogs) setMicroWinLogs(JSON.parse(storedMicroWinLogs));
     
     if (storedPlans) setDayPlans(JSON.parse(storedPlans));
     if (storedJournal) setJournalEntries(JSON.parse(storedJournal));
@@ -81,10 +88,12 @@ const App: React.FC = () => {
     if (isLoaded) {
       localStorage.setItem('obsidian_habits', JSON.stringify(habits));
       localStorage.setItem('obsidian_logs', JSON.stringify(logs));
+      localStorage.setItem('obsidian_microwins', JSON.stringify(microWins));
+      localStorage.setItem('obsidian_microwin_logs', JSON.stringify(microWinLogs));
       localStorage.setItem('obsidian_plans', JSON.stringify(dayPlans));
       localStorage.setItem('obsidian_journal', JSON.stringify(journalEntries));
     }
-  }, [habits, logs, dayPlans, journalEntries, isLoaded]);
+  }, [habits, logs, microWins, microWinLogs, dayPlans, journalEntries, isLoaded]);
 
   // --- Handlers ---
   const addHabit = (habitData: Omit<Habit, 'id' | 'createdAt'>) => {
@@ -134,6 +143,35 @@ const App: React.FC = () => {
     });
   };
 
+  // --- Micro Win Handlers ---
+  const addMicroWin = (text: string) => {
+    const newWin: MicroWin = { id: crypto.randomUUID(), text };
+    setMicroWins([...microWins, newWin]);
+  };
+
+  const deleteMicroWin = (id: string) => {
+    setMicroWins(microWins.filter(w => w.id !== id));
+    setMicroWinLogs(microWinLogs.filter(l => l.winId !== id));
+  };
+
+  const reorderMicroWins = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= microWins.length) return;
+    const newWins = [...microWins];
+    const [moved] = newWins.splice(fromIndex, 1);
+    newWins.splice(toIndex, 0, moved);
+    setMicroWins(newWins);
+  };
+
+  const toggleMicroWin = (winId: string, date: string) => {
+    setMicroWinLogs(prev => {
+        const existing = prev.find(l => l.winId === winId && l.date === date);
+        if (existing) {
+            return prev.filter(l => !(l.winId === winId && l.date === date));
+        }
+        return [...prev, { date, winId, completed: true }];
+    });
+  };
+
   const saveDayPlan = (date: string, tasks: DailyTask[]) => {
     setDayPlans(prev => {
       const filtered = prev.filter(p => p.date !== date);
@@ -154,6 +192,8 @@ const App: React.FC = () => {
     const data: BackupData = {
       habits,
       logs,
+      microWins,
+      microWinLogs,
       dayPlans,
       journalEntries,
       exportDate: new Date().toISOString()
@@ -173,6 +213,8 @@ const App: React.FC = () => {
     if (confirm("Importing data will overwrite your current session. Continue?")) {
       if (data.habits) setHabits(data.habits);
       if (data.logs) setLogs(data.logs);
+      if (data.microWins) setMicroWins(data.microWins);
+      if (data.microWinLogs) setMicroWinLogs(data.microWinLogs);
       if (data.dayPlans) setDayPlans(data.dayPlans);
       if (data.journalEntries) setJournalEntries(data.journalEntries);
       alert("Data restored successfully!");
@@ -209,7 +251,7 @@ const App: React.FC = () => {
             <NavButton view={ViewState.DASHBOARD} icon={LayoutDashboard} label="Dashboard" />
             <NavButton view={ViewState.HABITS} icon={Settings} label="Habits" />
             <NavButton view={ViewState.TASKS} icon={Calendar} label="Daily Plan" />
-            <NavButton view={ViewState.JOURNAL} icon={PenTool} label="Wins Journal" />
+            <NavButton view={ViewState.JOURNAL} icon={Trophy} label="Wins" />
         </nav>
         
         {/* Placeholder for layout balance */}
@@ -247,13 +289,19 @@ const App: React.FC = () => {
             <Journal 
                entries={journalEntries}
                onSaveEntry={saveJournalEntry}
+               microWins={microWins}
+               microWinLogs={microWinLogs}
+               onToggleMicroWin={toggleMicroWin}
+               onAddMicroWin={addMicroWin}
+               onDeleteMicroWin={deleteMicroWin}
+               onReorderMicroWins={reorderMicroWins}
             />
           )}
         </div>
       </main>
 
       {/* Version Tag */}
-      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.4</div>
+      <div className="fixed bottom-4 left-4 text-[10px] text-gray-700 font-mono select-none pointer-events-none">v1.5</div>
     </div>
   );
 };

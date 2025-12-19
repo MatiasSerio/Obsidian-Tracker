@@ -13,6 +13,17 @@ export interface HabitLog {
   partial: boolean; // Met min objective but not full
 }
 
+export interface MicroWin {
+  id: string;
+  text: string;
+}
+
+export interface MicroWinLog {
+  date: string; // YYYY-MM-DD
+  winId: string;
+  completed: boolean;
+}
+
 export interface DailyTask {
   id: string;
   text: string;
@@ -33,6 +44,8 @@ export interface JournalEntry {
 export interface AppState {
   habits: Habit[];
   habitLogs: HabitLog[];
+  microWins: MicroWin[];
+  microWinLogs: MicroWinLog[];
   dayPlans: DayPlan[];
   journalEntries: JournalEntry[];
 }
@@ -40,6 +53,8 @@ export interface AppState {
 export interface BackupData {
   habits: Habit[];
   logs: HabitLog[];
+  microWins?: MicroWin[];
+  microWinLogs?: MicroWinLog[];
   dayPlans: DayPlan[];
   journalEntries: JournalEntry[];
   exportDate: string;
